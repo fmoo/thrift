@@ -21,7 +21,6 @@
 
 import time
 import FacebookService
-import thrift.reflection.limited
 from ttypes import fb_status
 
 class FacebookBase(FacebookService.Iface):
@@ -71,9 +70,6 @@ class FacebookBase(FacebookService.Iface):
 
   def getCpuProfile(self, duration):
     return ""
-
-  def getLimitedReflection(self):
-    return thrift.reflection.limited.Service()
 
   def reinitialize(self):
     pass
