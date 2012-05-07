@@ -1556,6 +1556,7 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
     "from urlparse import urlparse" << endl <<
     "from thrift.transport import TTransport" << endl <<
     "from thrift.transport import TSocket" << endl <<
+    "from thrift.transport import TSSLSocket" << endl <<
     "from thrift.transport import THttpClient" << endl <<
     "from thrift.protocol import TBinaryProtocol" << endl <<
     endl;
@@ -1565,15 +1566,12 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
     "from " << module_ << ".ttypes import *" << endl <<
     endl;
 
+
   f_remote <<
-    "if len(sys.argv) <= 1 or sys.argv[1] == '--help':" << endl <<
-    "  print('')" << endl <<
-    "  print('Usage: ' + sys.argv[0] + ' [-h host[:port]] [-u url] [-f[ramed]] function [arg1 [arg2...]]')" << endl <<
-    "  print('')" << endl <<
-    "  print('Functions:')" << endl;
+    "epilog = \"\"\"Functions:\n";
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     f_remote <<
-      "  print('  " << (*f_iter)->get_returntype()->get_name() << " " << (*f_iter)->get_name() << "(";
+      "  " << (*f_iter)->get_returntype()->get_name() << " " << (*f_iter)->get_name() << "(";
     t_struct* arg_struct = (*f_iter)->get_arglist();
     const std::vector<t_field*>& args = arg_struct->get_members();
     vector<t_field*>::const_iterator a_iter;
@@ -1588,31 +1586,42 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
       f_remote <<
         args[i]->get_type()->get_name() << " " << args[i]->get_name();
     }
-    f_remote << ")')" << endl;
+    f_remote << ")" << endl;
   }
+  f_remote << "\"\"\"\n";
+
+
   f_remote <<
-    "  print('')" << endl <<
-    "  sys.exit(0)" << endl <<
-    endl;
+    "import argparse" << endl <<
+    endl <<
+    "ap = argparse.ArgumentParser(epilog=epilog," << endl << 
+    "       formatter_class=argparse.RawTextHelpFormatter)" << endl <<
+    "ap.add_argument('-H', '--hostport', metavar='HOST[:PORT]')" << endl <<
+    "ap.add_argument('-u', '--url', metavar='URL')" << endl <<
+    "ap.add_argument('-f', '--framed', action='store_true')" << endl <<
+    "ap.add_argument('-s', '--ssl', action='store_true')" << endl <<
+    "ap.add_argument('-k', '--insecure', action='store_true')" << endl <<
+    "ap.add_argument('function')" << endl <<
+    "ap.add_argument('args', nargs='*')" << endl <<
+    endl <<
+    "ns = ap.parse_args()" << endl << endl;
 
   f_remote <<
     "pp = pprint.PrettyPrinter(indent = 2)" << endl <<
     "host = 'localhost'" << endl <<
     "port = 9090" << endl <<
     "uri = ''" << endl <<
-    "framed = False" << endl <<
     "http = False" << endl <<
     "argi = 1" << endl <<
     endl <<
-    "if sys.argv[argi] == '-h':" << endl <<
-    "  parts = sys.argv[argi+1].split(':')" << endl <<
+    "if ns.hostport:" << endl <<
+    "  parts = ns.hostport.split(':')" << endl <<
     "  host = parts[0]" << endl <<
     "  if len(parts) > 1:" << endl <<
     "    port = int(parts[1])" << endl <<
-    "  argi += 2" << endl <<
     endl <<
-    "if sys.argv[argi] == '-u':" << endl <<
-    "  url = urlparse(sys.argv[argi+1])" << endl <<
+    "if ns.url:" << endl <<
+    "  url = urlparse(ns.url)" << endl <<
     "  parts = url[1].split(':')" << endl <<
     "  host = parts[0]" << endl <<
     "  if len(parts) > 1:" << endl <<
@@ -1623,20 +1632,17 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
     "  if url[4]:" << endl <<
     "    uri += '?%s' % url[4]" << endl <<
     "  http = True" << endl <<
-    "  argi += 2" << endl <<
-    endl <<
-    "if sys.argv[argi] == '-f' or sys.argv[argi] == '-framed':" << endl <<
-    "  framed = True" << endl <<
-    "  argi += 1" << endl <<
-    endl <<
-    "cmd = sys.argv[argi]" << endl <<
-    "args = sys.argv[argi+1:]" << endl <<
     endl <<
     "if http:" << endl <<
     "  transport = THttpClient.THttpClient(host, port, uri)" << endl <<
     "else:" << endl <<
-    "  socket = TSocket.TSocket(host, port)" << endl <<
-    "  if framed:" << endl <<
+    "  if ns.ssl:" << endl <<
+    "    check_ssl = not ns.insecure" << endl <<
+    "    socket = TSSLSocket.TSSLSocket(host, port," << endl <<
+    "                                   not ns.insecure)" << endl <<
+    "  else:" << endl <<
+    "    socket = TSocket.TSocket(host, port)" << endl <<
+    "  if ns.framed:" << endl <<
     "    transport = TTransport.TFramedTransport(socket)" << endl <<
     "  else:" << endl <<
     "    transport = TTransport.TBufferedTransport(socket)" << endl <<
@@ -1661,16 +1667,17 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
     int num_args = args.size();
 
     f_remote <<
-      "if cmd == '" << (*f_iter)->get_name() << "':" << endl <<
-      "  if len(args) != " << num_args << ":" << endl <<
-      "    print('" << (*f_iter)->get_name() << " requires " << num_args << " args')" << endl <<
+      "if ns.function == '" << (*f_iter)->get_name() << "':" << endl <<
+      "  if len(ns.args) != " << num_args << ":" << endl <<
+      "    print('" << (*f_iter)->get_name() << " requires " << num_args
+                    <<  " args')" << endl <<
       "    sys.exit(1)" << endl <<
       "  pp.pprint(client." << (*f_iter)->get_name() << "(";
     for (int i = 0; i < num_args; ++i) {
       if (args[i]->get_type()->is_string()) {
-        f_remote << "args[" << i << "],";
+        f_remote << "ns.args[" << i << "],";
       } else {
-        f_remote << "eval(args[" << i << "]),";
+        f_remote << "eval(ns.args[" << i << "]),";
       }
     }
     f_remote << "))" << endl;
@@ -1680,7 +1687,7 @@ void t_py_generator::generate_service_remote(t_service* tservice) {
 
   if (functions.size() > 0) {
     f_remote << "else:" << endl;
-    f_remote << "  print('Unrecognized method %s' % cmd)" << endl;
+    f_remote << "  print('Unrecognized method %s' % ns.function)" << endl;
     f_remote << "  sys.exit(1)" << endl;
     f_remote << endl;
   }
