@@ -70,14 +70,14 @@ class THttpClient(TTransportBase):
           http_proxy.port = 8080
       else:
         raise ValueError("Unsupported Proxy Scheme, %s" % http_proxy.scheme)
-      self.http_proxy = http_proxy
+    self.http_proxy = http_proxy
     self.__wbuf = StringIO()
     self.__http = None
     self.__timeout = None
     self.__custom_headers = None
 
   def open(self):
-    http_proxy = getattr(self, 'http_proxy', None)
+    http_proxy = self.http_proxy
     if self.scheme == 'http':
       if http_proxy is not None:
         self.__http = httplib.HTTP(self.http_proxy.hostname,
