@@ -30,6 +30,7 @@ import Queue
 import select
 import struct
 import logging
+import sys
 
 from thrift.transport import TTransport
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
@@ -238,6 +239,7 @@ class TNonblockingServer:
         self._read, self._write = socket.socketpair()
         self.prepared = False
         self._stop = False
+        self.select_timeout = DEFAULT_SELECT_TIMEOUT
 
     def setNumThreads(self, num):
         """Set the number of worker threads that should be created."""
@@ -295,7 +297,7 @@ class TNonblockingServer:
                 writable.append(connection.fileno())
             if connection.is_closed():
                 del self.clients[i]
-        return select.select(readable, writable, readable)
+        return select.select(readable, writable, readable, self.select_timeout)
 
     def handle(self):
         """Handle requests.
@@ -344,3 +346,11 @@ class TNonblockingServer:
         self.prepare()
         while not self._stop:
             self.handle()
+
+if sys.platform == 'win32':
+    # The Windows select() implementation can't process signals during select.
+    # Default to a 1 second select timeout, so we'll wake up once a second to
+    # process any pending signals.
+    DEFAULT_SELECT_TIMEOUT = 1
+else:
+    DEFAULT_SELECT_TIMEOUT = None
