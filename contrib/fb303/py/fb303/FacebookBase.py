@@ -41,6 +41,9 @@ class FacebookBase(FacebookService.Iface):
   def getStatus(self, ):
     return fb_status.ALIVE
 
+  def getStatusDetails(self, ):
+    return ''
+
   def getCounters(self):
     return self.counters
 
