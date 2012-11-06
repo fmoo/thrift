@@ -30,6 +30,7 @@ class FacebookBase(FacebookService.Iface):
     self.name = name
     self.alive = int(time.time())
     self.counters = {}
+    self.options = {}
 
   def getName(self, ):
     return self.name
@@ -55,16 +56,13 @@ class FacebookBase(FacebookService.Iface):
     self.counters[key] = self.getCounter(key) + 1
 
   def setOption(self, key, value):
-    pass
+    self.options[key] = value
 
   def getOption(self, key):
-    return ""
+    return self.options[key]
 
   def getOptions(self):
-    return {}
-
-  def getOptions(self):
-    return {}
+    return self.options
 
   def aliveSince(self):
     return self.alive
