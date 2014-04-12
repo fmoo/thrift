@@ -21,7 +21,6 @@
 
 import time
 import FacebookService
-import thrift.reflection.limited
 from ttypes import fb_status
 
 class FacebookBase(FacebookService.Iface):
@@ -30,6 +29,7 @@ class FacebookBase(FacebookService.Iface):
     self.name = name
     self.alive = int(time.time())
     self.counters = {}
+    self.options = {}
 
   def getName(self, ):
     return self.name
@@ -40,6 +40,9 @@ class FacebookBase(FacebookService.Iface):
   def getStatus(self, ):
     return fb_status.ALIVE
 
+  def getStatusDetails(self, ):
+    return ''
+
   def getCounters(self):
     return self.counters
 
@@ -47,33 +50,25 @@ class FacebookBase(FacebookService.Iface):
     self.counters[key] = 0
 
   def getCounter(self, key):
-    if self.counters.has_key(key):
-      return self.counters[key]
-    return 0
+    return self.counters.get(key, 0)
 
   def incrementCounter(self, key):
     self.counters[key] = self.getCounter(key) + 1
 
   def setOption(self, key, value):
-    pass
+    self.options[key] = value
 
   def getOption(self, key):
-    return ""
+    return self.options[key]
 
   def getOptions(self):
-    return {}
-
-  def getOptions(self):
-    return {}
+    return self.options
 
   def aliveSince(self):
     return self.alive
 
   def getCpuProfile(self, duration):
     return ""
-
-  def getLimitedReflection(self):
-    return thrift.reflection.limited.Service()
 
   def reinitialize(self):
     pass
