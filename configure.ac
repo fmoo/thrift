@@ -127,7 +127,7 @@ fi
 AX_THRIFT_LIB(cpp, [C++], yes)
 have_cpp=no
 if test "$with_cpp" = "yes";  then
-  AX_BOOST_BASE([1.40.0])
+  AX_BOOST_BASE([1.53.0])
   if test "x$succeeded" = "xyes" ; then
     have_cpp="yes"
   fi
@@ -649,6 +649,7 @@ AC_CONFIG_FILES([
   lib/lua/Makefile
   test/Makefile
   test/cpp/Makefile
+  test/go/Makefile
   test/hs/Makefile
   test/php/Makefile
   test/perl/Makefile

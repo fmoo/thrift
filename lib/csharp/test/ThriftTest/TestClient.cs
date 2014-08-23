@@ -30,6 +30,7 @@ namespace Test
 	public class TestClient
 	{
 		private static int numIterations = 1;
+		private static string protocol = "";
 
 		public static void Execute(string[] args)
 		{
@@ -39,22 +40,13 @@ namespace Test
 				int port = 9090;
 				string url = null, pipe = null;
 				int numThreads = 1;
-				bool buffered = false, framed = false;
+				bool buffered = false, framed = false, encrypted = false;
 
 				try
 				{
 					for (int i = 0; i < args.Length; i++)
 					{
-						if (args[i] == "-h")
-						{
-							string[] hostport = args[++i].Split(':');
-							host = hostport[0];
-							if (hostport.Length > 1)
-							{
-								port = Convert.ToInt32(hostport[1]);
-							}
-						}
-						else if (args[i] == "-u")
+						if (args[i] == "-u")
 						{
 							url = args[++i];
 						}
@@ -62,24 +54,47 @@ namespace Test
 						{
 							numIterations = Convert.ToInt32(args[++i]);
 						}
-						else if (args[i] == "-b" || args[i] == "-buffered")
-						{
-							buffered = true;
-							Console.WriteLine("Using buffered sockets");
-						}
-						else if (args[i] == "-f" || args[i] == "-framed")
-						{
-							framed = true;
-							Console.WriteLine("Using framed transport");
-						}
 						else if (args[i] == "-pipe")  // -pipe <name>
 						{
 							pipe = args[++i];
 							Console.WriteLine("Using named pipes transport");
 						}
+						else if (args[i].Contains("--host="))
+						{
+							host = args[i].Substring(args[i].IndexOf("=") + 1);
+						}
+						else if (args[i].Contains("--port="))
+						{
+							port = int.Parse(args[i].Substring(args[i].IndexOf("=")+1));
+						}
+						else if (args[i] == "-b" || args[i] == "--buffered" || args[i] == "--transport=buffered")
+						{
+							buffered = true;
+							Console.WriteLine("Using buffered sockets");
+						}
+						else if (args[i] == "-f" || args[i] == "--framed"  || args[i] == "--transport=framed")
+						{
+							framed = true;
+							Console.WriteLine("Using framed transport");
+						}
 						else if (args[i] == "-t")
 						{
 							numThreads = Convert.ToInt32(args[++i]);
+						}
+						else if (args[i] == "--compact" || args[i] == "--protocol=compact")
+						{
+							protocol = "compact";
+							Console.WriteLine("Using compact protocol");
+						}
+						else if (args[i] == "--json" || args[i] == "--protocol=json")
+						{
+							protocol = "json";
+							Console.WriteLine("Using JSON protocol");
+						}
+						else if (args[i] == "--ssl")
+						{
+							encrypted = true;
+							Console.WriteLine("Using encrypted transport");
 						}
 					}
 				}
@@ -87,8 +102,6 @@ namespace Test
 				{
 					Console.WriteLine(e.StackTrace);
 				}
-
-
 
 				//issue tests on separate threads simultaneously
 				Thread[] threads = new Thread[numThreads];
@@ -101,17 +114,22 @@ namespace Test
 					{
 						// endpoint transport
 						TTransport trans = null;
-						if( pipe != null)
+						if (pipe != null)
 							trans = new TNamedPipeClientTransport(pipe);
 						else
-							trans = new TSocket(host, port);
-						
+						{
+							if (encrypted)
+								trans = new TTLSSocket(host, port, "../../../../../keys/client.pem");
+							else
+								trans = new TSocket(host, port);
+						}
+
 						// layered transport
 						if (buffered)
 							trans = new TBufferedTransport(trans as TStreamTransport);
 						if (framed)
 							trans = new TFramedTransport(trans);
-						
+
 						//ensure proper open/close of transport
 						trans.Open();
 						trans.Close();
@@ -151,9 +169,15 @@ namespace Test
 
 		public static void ClientTest(TTransport transport)
 		{
-			TBinaryProtocol binaryProtocol = new TBinaryProtocol(transport);
+			TProtocol proto;
+			if (protocol == "compact")
+				proto = new TCompactProtocol(transport);
+			else if (protocol == "json")
+				proto = new TJSONProtocol(transport);
+			else
+				proto = new TBinaryProtocol(transport);
 
-			ThriftTest.Client client = new ThriftTest.Client(binaryProtocol);
+			ThriftTest.Client client = new ThriftTest.Client(proto);
 			try
 			{
 				if (!transport.IsOpen)
@@ -429,7 +453,6 @@ namespace Test
 				Console.Write("}, ");
 			}
 			Console.WriteLine("}");
-
 
 			sbyte arg0 = 1;
 			int arg1 = 2;

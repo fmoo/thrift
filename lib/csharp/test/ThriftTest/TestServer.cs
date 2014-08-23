@@ -23,6 +23,7 @@
 // http://developers.facebook.com/thrift/
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using Thrift.Collections;
 using Thrift.Test; //generated code
 using Thrift.Transport;
@@ -321,41 +322,38 @@ namespace Test
 		{
 			try
 			{
-				bool useBufferedSockets = false, useFramed = false;
-				int port = 9090, i = 0;
+				bool useBufferedSockets = false, useFramed = false, useEncryption = false, compact = false, json = false;
+				int port = 9090;
 				string pipe = null;
-				if (args.Length > 0)
+				for (int i = 0; i < args.Length; i++)
 				{
-					i = 0;
 					if (args[i] == "-pipe")  // -pipe name
 					{
 						pipe = args[++i];
 					}
-					else  // default to port number (compatibility)
+					else if (args[i].Contains("--port="))
 					{
-						port = int.Parse(args[i]);
+						port = int.Parse(args[i].Substring(args[i].IndexOf("=")+1));
 					}
-
-					++i;
-					if (args.Length > i)
+					else if (args[i] == "-b" || args[i] == "--buffered" || args[i] == "--transport=buffered")
 					{
-						if ( args[i] == "raw" )
-						{
-							// as default
-						}
-						else if ( args[i] == "buffered" )
-						{
-							useBufferedSockets = true;
-						}
-						else if (args[i] == "framed")
-						{
-							useFramed = true;
-						}
-						else
-						{
-							// Fall back to the older boolean syntax
-							bool.TryParse(args[i], out useBufferedSockets);
-						}
+						useBufferedSockets = true;
+					}
+					else if (args[i] == "-f" || args[i] == "--framed"  || args[i] == "--transport=framed")
+					{
+						useFramed = true;
+					}
+					else if (args[i] == "--compact" || args[i] == "--protocol=compact")
+					{
+						compact = true;
+					}
+					else if (args[i] == "--json" || args[i] == "--protocol=json")
+					{
+						json = true;
+					}
+					else if (args[i] == "--ssl")
+					{
+						useEncryption = true;
 					}
 				}
 
@@ -371,15 +369,30 @@ namespace Test
 				}
 				else
 				{
-					trans = new TServerSocket(port, 0, useBufferedSockets);
+					if (useEncryption)
+					{
+						trans = new TTLSServerSocket(port, 0, useBufferedSockets, new X509Certificate2("../../../../../keys/server.pem"));
+					}
+					else
+					{
+						trans = new TServerSocket(port, 0, useBufferedSockets);
+					}
 				}
 
+				TProtocolFactory proto;
+				if ( compact )
+					proto = new TCompactProtocol.Factory();
+				else if ( json )
+					proto = new TJSONProtocol.Factory();
+				else
+					proto = new TBinaryProtocol.Factory();
+					
 				// Simple Server
 				TServer serverEngine;
 				if ( useFramed )
-					serverEngine = new TSimpleServer(testProcessor, trans, new TFramedTransport.Factory());
+					serverEngine = new TSimpleServer(testProcessor, trans, new TFramedTransport.Factory(), proto);
 				else
-					serverEngine = new TSimpleServer(testProcessor, trans);
+					serverEngine = new TSimpleServer(testProcessor, trans, new TTransportFactory(), proto);
 
 				// ThreadPool Server
 				// serverEngine = new TThreadPoolServer(testProcessor, tServerSocket);
@@ -391,9 +404,12 @@ namespace Test
 
 				// Run it
 				string where = ( pipe != null ? "on pipe "+pipe : "on port " + port);
-				Console.WriteLine("Starting the server " +where+
-					(useBufferedSockets ? " with buffered socket" : "") + 
-					(useFramed ? " with framed transport" : "") + 
+				Console.WriteLine("Starting the server " + where +
+					(useBufferedSockets ? " with buffered socket" : "") +
+					(useFramed ? " with framed transport" : "") +
+					(useEncryption ? " with encryption" : "") +
+					(compact ? " with compact protocol" : "") +
+					(json ? " with json protocol" : "") +
 					"...");
 				serverEngine.Serve();
 

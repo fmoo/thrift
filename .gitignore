@@ -19,6 +19,7 @@
 *.swp
 *.m4
 *~
+*.pyc
 
 .*project
 junit*.properties
@@ -36,6 +37,7 @@ node_modules
 /autoscan.log
 /autoscan-*.log
 /compiler/cpp/Debug
+/compiler/cpp/lex.yythriftl.cc
 /compiler/cpp/libparse.a
 /compiler/cpp/src/windows/version.h
 /compiler/cpp/thrift
@@ -110,8 +112,8 @@ node_modules
 /lib/c_glib/test/testtransportsocket
 /lib/c_glib/thriftc.pc
 /lib/c_glib/thrift_c_glib.pc
-/lib/csharp/src/bin/
-/lib/csharp/src/obj/
+/lib/csharp/**/bin/
+/lib/csharp/**/obj/
 /lib/d/libthriftd.a
 /lib/d/test/serialization_benchmark
 /lib/d/test/transport_test
@@ -160,6 +162,8 @@ node_modules
 /lib/perl/blib
 /lib/perl/pm_to_blib
 /lib/py/build
+/lib/py/dist
+/lib/py/src/protocol/fastbinary.so
 /lib/py/thrift.egg-info/
 /lib/rb/Gemfile.lock
 /lib/rb/debug_proto_test
